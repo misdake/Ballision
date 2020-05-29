@@ -177,7 +177,7 @@ class AiController implements Controller {
 
 class UserController implements Controller {
     private game: Game;
-    private ball: Ball; //TODO
+    private ball: Ball;
     constructor(game: Game) {
         this.game = game;
     }

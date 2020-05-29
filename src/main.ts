@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {Mesh, MeshStandardMaterial, PlaneBufferGeometry, PointLight, WebGLRenderer} from 'three';
+import {Mesh, MeshStandardMaterial, PlaneBufferGeometry, SpotLight, WebGLRenderer} from 'three';
 import * as Stats from 'stats.js';
 import {Game} from "./game";
 
@@ -26,13 +26,14 @@ function init() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x050505);
 
-    let light = new PointLight("#FFFFFF");
+    let light = new SpotLight("#FFFFFF");
     light.position.set(0, 10, 0);
     light.castShadow = true;            // default false
     light.shadow.mapSize.width = 1024;  // default
     light.shadow.mapSize.height = 1024; // default
     light.shadow.camera.near = 0.1;       // default
     light.shadow.camera.far = 20;      // default
+    light.lookAt(0, 0, 0);
     scene.add(light);
 
     let plane = new PlaneBufferGeometry(10, 10);
