@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@types/stats.js": "^0.17.0",
+    "nipplejs": "^0.8.5",
     "stats.js": "^0.17.0",
     "three": "^0.116.1"
   },

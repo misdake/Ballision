@@ -1,11 +1,58 @@
 import * as THREE from "three";
 import {Camera, Scene} from "three";
+import * as nipplejs from "nipplejs";
+import {JoystickManager} from "nipplejs";
 import {Texture} from "three/src/textures/Texture";
 
 const textureLoader = new THREE.TextureLoader();
 
 const ACC = 2;
 const FRICTION = 0.5;
+
+let hasTouch = (function () {
+    // @ts-ignore
+    return 'ontouchstart' in window || window.DocumentTouch && document instanceof window.DocumentTouch ||
+        navigator.maxTouchPoints > 0 ||
+        window.navigator.msMaxTouchPoints > 0;
+})();
+
+let virtualJoystick1: JoystickManager;
+let virtualJoystick2: JoystickManager;
+let virtualJoystick1Data: { x: number, y: number };
+let virtualJoystick2Data: { x: number, y: number };
+
+// hasTouch = true;
+if (hasTouch) {
+    virtualJoystick1 = nipplejs.create({
+        zone: document.getElementById('leftpanel'),
+        position: {left: '75px', bottom: '75px'},
+        mode: "static",
+    });
+    virtualJoystick1.on("move", (evt, data) => {
+        let distance = data.distance / 50;
+        let x = Math.cos(data.angle.radian) * distance;
+        let y = -Math.sin(data.angle.radian) * distance;
+        virtualJoystick1Data = {x: x, y: y};
+    });
+    virtualJoystick1.on("end", (evt, data) => {
+        virtualJoystick1Data = undefined;
+    });
+
+    virtualJoystick2 = nipplejs.create({
+        zone: document.getElementById('rightpanel'),
+        position: {right: '75px', bottom: '75px'},
+        mode: "static",
+    });
+    virtualJoystick2.on("move", (evt, data) => {
+        let distance = data.distance / 50;
+        let x = Math.cos(data.angle.radian) * distance;
+        let y = -Math.sin(data.angle.radian) * distance;
+        virtualJoystick2Data = {x: x, y: y};
+    });
+    virtualJoystick2.on("end", (evt, data) => {
+        virtualJoystick2Data = undefined;
+    });
+}
 
 export class Ball {
 
@@ -195,27 +242,36 @@ class UserController implements Controller {
             }
         }
 
+        let dx = 0;
+        let dy = 0;
+
+        if (virtualJoystick1Data) {
+            dx = virtualJoystick1Data.x;
+            dy = virtualJoystick1Data.y;
+        }
 
         let gamepads = navigator.getGamepads();
         let gamepad = gamepads[0];
         if (gamepad) {
-            let dx = gamepad.axes[0];
-            let dy = gamepad.axes[1];
-            let moveLen = Math.hypot(dx, dy);
-            if (moveLen > 0.1) {
-                if (moveLen > 1) {
-                    dx = dx / moveLen;
-                    dy = dy / moveLen;
-                }
-                let back = dy;
-                let right = dx;
-                let x = Math.cos(this.game.cameraAlpha) * back + Math.sin(this.game.cameraAlpha) * right;
-                let y = Math.sin(this.game.cameraAlpha) * back + -Math.cos(this.game.cameraAlpha) * right;
-                return {fx: x, fy: y};
-            }
+            dx = gamepad.axes[0];
+            dy = gamepad.axes[1];
         }
 
-        return {fx: 0, fy: 0};
+        let moveLen = Math.hypot(dx, dy);
+        if (moveLen > 0.1) {
+            if (moveLen > 1) {
+                dx = dx / moveLen;
+                dy = dy / moveLen;
+            }
+            let back = dy;
+            let right = dx;
+            let x = Math.cos(this.game.cameraAlpha) * back + Math.sin(this.game.cameraAlpha) * right;
+            let y = Math.sin(this.game.cameraAlpha) * back + -Math.cos(this.game.cameraAlpha) * right;
+
+            return {fx: x, fy: y};
+        } else {
+            return {fx: 0, fy: 0};
+        }
     }
 }
 
@@ -303,25 +359,34 @@ export class Game {
     }
 
     updateCamera(camera: Camera, dt: number) {
+        let da = 0;
+        let db = 0;
+
+        if (virtualJoystick2Data) {
+            da = virtualJoystick2Data.x;
+            db = virtualJoystick2Data.y;
+        }
+
         let gamepads = navigator.getGamepads();
         let gamepad = gamepads[0];
         if (gamepad) {
-            let da = gamepad.axes[2];
-            let db = gamepad.axes[3];
-            let rotLen = Math.hypot(da, db);
-            if (rotLen > 0.1) {
-                if (rotLen > 1) {
-                    da = da / rotLen;
-                    db = db / rotLen;
-                }
+            da = gamepad.axes[2];
+            db = gamepad.axes[3];
+        }
 
-                let speed = 3.0;
-                let amount = speed * dt;
-                this.cameraAlpha += da * amount;
-                this.cameraBeta += db * amount;
-                this.cameraAlpha = this.cameraAlpha % (Math.PI * 2);
-                this.cameraBeta = Math.min(Math.PI * 0.48, Math.max(this.cameraBeta, 0));
+        let rotLen = Math.hypot(da, db);
+        if (rotLen > 0.1) {
+            if (rotLen > 1) {
+                da = da / rotLen;
+                db = db / rotLen;
             }
+
+            let speed = 2.0;
+            let amount = speed * dt;
+            this.cameraAlpha += da * amount;
+            this.cameraBeta += db * amount;
+            this.cameraAlpha = this.cameraAlpha % (Math.PI * 2);
+            this.cameraBeta = Math.min(Math.PI * 0.48, Math.max(this.cameraBeta, 0));
         }
 
         this.balls.forEach(ball => {

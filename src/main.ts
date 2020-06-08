@@ -49,7 +49,7 @@ function init() {
     scene.add(mesh);
 
 
-    camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 10000);
+    camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000);
     camera.position.x = 10;
     camera.position.y = 10;
     camera.position.z = 10;
