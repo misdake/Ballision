@@ -58,7 +58,7 @@ function init() {
 
     window.addEventListener('resize', onWindowResize, false);
 
-    game = new Game(scene);
+    game = new Game(scene, renderer);
     game.spawn();
 }
 

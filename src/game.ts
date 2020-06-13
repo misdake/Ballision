@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import {Camera, Scene} from "three";
+import {PerspectiveCamera, Scene, WebGLRenderer} from "three";
 import * as nipplejs from "nipplejs";
 import {JoystickManager} from "nipplejs";
 import {Texture} from "three/src/textures/Texture";
@@ -20,6 +20,14 @@ let virtualJoystick1: JoystickManager;
 let virtualJoystick2: JoystickManager;
 let virtualJoystick1Data: { x: number, y: number };
 let virtualJoystick2Data: { x: number, y: number };
+
+let pressedKeys = new Map<string, boolean>();
+window.onkeyup = function (e: KeyboardEvent) {
+    pressedKeys.set(e.key.toLowerCase(), false);
+};
+window.onkeydown = function (e: KeyboardEvent) {
+    pressedKeys.set(e.key.toLowerCase(), true);
+};
 
 // hasTouch = true;
 if (hasTouch) {
@@ -52,6 +60,9 @@ if (hasTouch) {
     virtualJoystick2.on("end", (evt, data) => {
         virtualJoystick2Data = undefined;
     });
+} else {
+    document.getElementById("leftpanel").style.display = "none";
+    document.getElementById("rightpanel").style.display = "none";
 }
 
 export class Ball {
@@ -250,6 +261,17 @@ class UserController implements Controller {
             dy = virtualJoystick1Data.y;
         }
 
+        let pressedW = pressedKeys.get("w");
+        let pressedA = pressedKeys.get("a");
+        let pressedS = pressedKeys.get("s");
+        let pressedD = pressedKeys.get("d");
+        if (pressedW || pressedA || pressedS || pressedD) {
+            if (pressedW) dy -= 1;
+            if (pressedA) dx -= 1;
+            if (pressedS) dy += 1;
+            if (pressedD) dx += 1;
+        }
+
         let gamepads = navigator.getGamepads();
         let gamepad = gamepads[0];
         if (gamepad) {
@@ -280,13 +302,20 @@ export class Game {
     private readonly textureEarth = textureLoader.load("resource/EarthView.jpg");
     private readonly texture8Ball = textureLoader.load("resource/8Ball.png");
 
-    private scene: Scene;
+    readonly scene: Scene;
+    readonly renderer: WebGLRenderer;
+
     cameraAlpha: number;
     cameraBeta: number;
+
     balls: Ball[];
 
-    constructor(scene: Scene) {
+    private mouseMoveX: number;
+    private mouseMoveY: number;
+
+    constructor(scene: Scene, renderer: WebGLRenderer) {
         this.scene = scene;
+        this.renderer = renderer;
         this.balls = [];
         this.createUserBall(0, 0);
         this.createAiBall(3, 3);
@@ -297,6 +326,29 @@ export class Game {
         this.createAiBall(-3, 3);
         this.createAiBall(-3, 0);
         this.createAiBall(-3, -3);
+
+        let isLocked = false;
+        document.addEventListener('pointerlockchange', onPointerlockChange, false);
+        document.addEventListener('pointerlockerror', onPointerlockError, false);
+
+        function onPointerlockError() {
+            console.error('THREE.PointerLockControls: Unable to use Pointer Lock API');
+        }
+        function onPointerlockChange() {
+            isLocked = document.pointerLockElement === renderer.domElement;
+        }
+
+        this.mouseMoveX = 0;
+        this.mouseMoveY = 0;
+        renderer.domElement.onmousemove = (event) => {
+            if (isLocked) {
+                this.mouseMoveX += event.movementX;
+                this.mouseMoveY += event.movementY;
+            }
+        };
+        renderer.domElement.onclick = () => {
+            renderer.domElement.requestPointerLock();
+        };
     }
     private createUserBall(x: number, y: number) {
         let ball = new Ball(x, y, this.texture8Ball);
@@ -341,7 +393,7 @@ export class Game {
             if (Math.hypot(ball.x, ball.y) > 5) {
                 ball.alive = false;
                 if (ball.follow) {
-                    alert("you lose");
+                    // alert("you lose");
                     setTimeout(() => this.spawn(), 0);
                 }
             }
@@ -349,7 +401,7 @@ export class Game {
 
         let currentAlive = this.balls.filter(ball => ball.alive);
         if (currentAlive.length === 1 && currentAlive[0].follow) {
-            alert("you win");
+            // alert("you win");
             setTimeout(() => this.spawn(), 0);
         }
 
@@ -358,7 +410,7 @@ export class Game {
         });
     }
 
-    updateCamera(camera: Camera, dt: number) {
+    updateCamera(camera: PerspectiveCamera, dt: number) {
         let da = 0;
         let db = 0;
 
@@ -373,8 +425,11 @@ export class Game {
             da = gamepad.axes[2];
             db = gamepad.axes[3];
         }
-
         let rotLen = Math.hypot(da, db);
+
+        let dAlpha = 0;
+        let dBeta = 0;
+
         if (rotLen > 0.1) {
             if (rotLen > 1) {
                 da = da / rotLen;
@@ -383,11 +438,21 @@ export class Game {
 
             let speed = 2.0;
             let amount = speed * dt;
-            this.cameraAlpha += da * amount;
-            this.cameraBeta += db * amount;
-            this.cameraAlpha = this.cameraAlpha % (Math.PI * 2);
-            this.cameraBeta = Math.min(Math.PI * 0.48, Math.max(this.cameraBeta, 0));
+            dAlpha = da * amount;
+            dBeta = db * amount;
         }
+
+        if (this.mouseMoveX !== 0 || this.mouseMoveY !== 0) {
+            dAlpha = this.mouseMoveX / window.innerHeight * camera.fov / 2 * 0.2;
+            dBeta = this.mouseMoveY / window.innerHeight * camera.fov / 2 * 0.2;
+        }
+        this.mouseMoveX = 0;
+        this.mouseMoveY = 0;
+
+        this.cameraAlpha += dAlpha;
+        this.cameraBeta += dBeta;
+        this.cameraAlpha = this.cameraAlpha % (Math.PI * 2);
+        this.cameraBeta = Math.min(Math.PI * 0.48, Math.max(this.cameraBeta, 0));
 
         this.balls.forEach(ball => {
             if (ball.follow) {
