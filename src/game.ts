@@ -246,15 +246,15 @@ class UserController implements Controller {
     }
     fetch(dt: number): { fx: number; fy: number } {
         this.ball = this.game.balls[0];
-        let rad = Math.hypot(this.ball.x, this.ball.y);
-        let dirx = this.ball.x / rad;
-        let diry = this.ball.y / rad;
-        let vcenter = this.ball.vx * dirx + this.ball.vy * diry;
-        if (vcenter > 0) {
-            if (rad + vcenter * vcenter / 2 / ACC * 1.5 > 5) {
-                console.log("alert!");
-            }
-        }
+        // let rad = Math.hypot(this.ball.x, this.ball.y);
+        // let dirx = this.ball.x / rad;
+        // let diry = this.ball.y / rad;
+        // let vcenter = this.ball.vx * dirx + this.ball.vy * diry;
+        // if (vcenter > 0) {
+        //     if (rad + vcenter * vcenter / 2 / ACC * 1.5 > 5) {
+        //         console.log("alert!");
+        //     }
+        // }
 
         let dx = 0;
         let dy = 0;
@@ -307,6 +307,10 @@ export class Game {
 
     readonly scene: Scene;
     readonly renderer: WebGLRenderer;
+
+    private win: number = 0;
+    private lose: number = 0;
+    private end: boolean = true;
 
     cameraAlpha: number;
     cameraBeta: number;
@@ -368,6 +372,7 @@ export class Game {
     }
 
     spawn() {
+        this.end = false;
         for (let ball of this.balls) {
             ball.reset();
         }
@@ -396,21 +401,30 @@ export class Game {
             if (Math.hypot(ball.x, ball.y) > 5) {
                 ball.alive = false;
                 if (ball.follow) {
-                    // alert("you lose");
-                    setTimeout(() => this.spawn(), 0);
+                    this.triggerEnd(false);
                 }
             }
         }
 
         let currentAlive = this.balls.filter(ball => ball.alive);
         if (currentAlive.length === 1 && currentAlive[0].follow) {
-            // alert("you win");
+            this.triggerEnd(true);
             setTimeout(() => this.spawn(), 0);
         }
 
         balls.forEach(ball => {
             ball.updateSphere();
         });
+    }
+
+    private triggerEnd(win: boolean) {
+        if (!this.end) {
+            this.end = true;
+            this.win += win ? 1 : 0;
+            this.lose += win ? 0 : 1;
+            document.getElementById("score").innerHTML = `Win ${this.win}, Lose ${this.lose}`;
+            setTimeout(() => this.spawn(), 0);
+        }
     }
 
     updateCamera(camera: PerspectiveCamera, dt: number) {
