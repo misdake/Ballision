@@ -187,7 +187,10 @@ class AiController implements Controller {
     }
     fetch(dt: number): { fx: number; fy: number } {
         this.modeTime -= dt;
-        if (this.modeTime < 0) {
+        if (this.modeTime >= 0 && !this.target.alive) {
+            this.modeTime = 0;
+        }
+        if (this.modeTime <= 0) {
             let valid = this.game.balls.filter(ball => ball !== this.ball && ball.alive);
             if (valid.length) {
                 this.target = valid[~~(valid.length * Math.random())];
@@ -204,7 +207,7 @@ class AiController implements Controller {
         let diry = this.ball.y / rad;
         let vcenter = this.ball.vx * dirx + this.ball.vy * diry;
         if (vcenter > 0) {
-            if (rad + vcenter * vcenter / 2 / ACC > 5) {
+            if (rad + vcenter * vcenter / 2 / ACC > 4.5) {
                 this.modeTime = 1;
                 this.mode = AiMode.CENTER;
             }
